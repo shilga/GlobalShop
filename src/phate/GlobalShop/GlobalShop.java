@@ -89,6 +89,7 @@ public class GlobalShop extends JavaPlugin {
 				iConomy.getAccount(player.getName()).getHoldings().add(price);
 				
 				player.sendMessage("You got " + df.format(price) + " for selling " + holdingitem.getAmount() + " of " + holdingitem.getType().toString().toLowerCase() +".");
+				log.info("[" + pdfFile.getName() + "] " + player.getName() + " sold " + holdingitem.getAmount() + " of "+holdingitem.getType().toString().toLowerCase() + " for "+df.format(price) + " Dollars");
 				
 				player.setItemInHand(null);
 			}
@@ -248,6 +249,8 @@ public class GlobalShop extends JavaPlugin {
 				stream.println("buysell: " + this.buysell);
 				stream.println();
 				stream.println("#Here the shops Item- and Pricelist is determined");
+				stream.println("#This is how the items are defined:");
+				stream.println("#- ItemID:ItemName:Amount:Price(:Damage/Color)");
 				stream.println("ShopItems:");
 				for (ShopItem item : ShopItems){
 					stream.println("- " + item.id + ":" + item.name + ":" + item.amount + ":" + df.format(item.price) + (item.damage!=-1 ? ":" + item.damage : ""));
