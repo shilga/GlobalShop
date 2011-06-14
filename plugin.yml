@@ -1,6 +1,6 @@
 name: GlobalShop
 main: phate.GlobalShop.GlobalShop
-version: 0.2
+version: 0.3
 author: Phate
 description: >
              Simple global Shop there the player can buy and sell items with commands
@@ -18,7 +18,7 @@ commands:
   gs_price:
     description: Shows the price of specified item
     aliases: price
-    usage: /<command> (name|id) [amount]
+    usage: /<command> (name|id)
     
   gs_checksell:
     description: Shows what the player would get for selling the item in his hand

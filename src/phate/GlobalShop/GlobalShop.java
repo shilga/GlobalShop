@@ -25,7 +25,7 @@ import java.util.logging.Logger;
 
 public class GlobalShop extends JavaPlugin {
 	public static final Logger log = Logger.getLogger("Minecraft");
-	private static Server server = null;
+	private Server server = null;
 	private ArrayList<ShopItem> ShopItems = new ArrayList<ShopItem>();
 	PluginDescriptionFile pdfFile = null;
 	private double buysell=(double) 0.8;
@@ -49,6 +49,14 @@ public class GlobalShop extends JavaPlugin {
 		
 		pdfFile=this.getDescription();
 		log.info("[" + pdfFile.getName() + "] by Phate." + " Plugin Enabled. (version " + pdfFile.getVersion() + ")");
+		
+		if (this.server.getPluginManager().getPlugin("iConomy") != null) {
+			log.info("[" + pdfFile.getName() + "] " + "Good. iConomy found.");
+		}
+		else {
+			log.info("[" + pdfFile.getName() + "] " + "Please install iConomy. Disabling...");
+			this.server.getPluginManager().disablePlugin(this);
+		}
 		
 		log.info("[" + pdfFile.getName() + "] " + "Loading Configuration...");
 		this.loadConfig();
@@ -74,22 +82,20 @@ public class GlobalShop extends JavaPlugin {
 		if (cmd.equalsIgnoreCase("gs_checksell")) {
 			double price = this.getSellingPrice(player);
 			if(price!= -1.0) {
-				DecimalFormat df = new DecimalFormat( "0.00" );
-				player.sendMessage("You will get " + df.format(price) + " for that.");
+				player.sendMessage("You will get " + ChatColor.YELLOW + iConomy.format(price) + ChatColor.WHITE +  " for that.");
 			}
 			return true;
 		}
 		
 		if (cmd.equalsIgnoreCase("gs_sell")) {
 			double price = this.getSellingPrice(player);
-			DecimalFormat df = new DecimalFormat( "0.00" );
 			ItemStack holdingitem = player.getItemInHand();
 			
 			if(price!= -1.0) {
 				iConomy.getAccount(player.getName()).getHoldings().add(price);
 				
-				player.sendMessage("You got " + df.format(price) + " for selling " + holdingitem.getAmount() + " of " + holdingitem.getType().toString().toLowerCase() +".");
-				log.info("[" + pdfFile.getName() + "] " + player.getName() + " sold " + holdingitem.getAmount() + " of "+holdingitem.getType().toString().toLowerCase() + " for "+df.format(price) + " Dollars");
+				player.sendMessage("You got " + ChatColor.YELLOW + iConomy.format(price) + ChatColor.WHITE + " for selling " + ChatColor.YELLOW + holdingitem.getAmount() + " of " + holdingitem.getType().toString().toLowerCase());
+				log.info("[" + pdfFile.getName() + "] " + player.getName() + " sold " + holdingitem.getAmount() + " of "+holdingitem.getType().toString().toLowerCase() + " for "+iConomy.format(price) + " Dollars");
 				
 				player.setItemInHand(null);
 			}
@@ -133,25 +139,29 @@ public class GlobalShop extends JavaPlugin {
 		ShopItem item = ShopItems.get(itemnum);
 		
 		if (cmd.equalsIgnoreCase("gs_buy")) { //Player wants to buy something
-			DecimalFormat df = new DecimalFormat( "0.00" );
 			ItemStack stack = new ItemStack(item.id, item.amount*amount, (short) (item.damage!=-1 ? item.damage : 0));
 			
 			if(iConomy.getAccount(player.getName()).getHoldings().hasEnough(item.price*amount)) { //Has the player enough money?
-				player.sendMessage("You have bought " + stack.getAmount() + " of "+item.name + " for "+item.price*amount + " Dollars");			
-				log.info("[" + pdfFile.getName() + "] " + player.getName() + " bought " + stack.getAmount() + " of "+item.name + " for "+item.price*amount + " Dollars");
-				
-				iConomy.getAccount(player.getName()).getHoldings().subtract(item.price*amount); //Substract the money from players account
-				player.getInventory().addItem(stack);
+				if(player.getInventory().firstEmpty()!=-1) {
+					player.sendMessage("You have bought " + ChatColor.YELLOW + stack.getAmount() + " of "+item.name + ChatColor.WHITE + " for " + ChatColor.YELLOW + iConomy.format(item.price*amount));			
+					log.info("[" + pdfFile.getName() + "] " + player.getName() + " bought " + stack.getAmount() + " of "+item.name + " for "+iConomy.format(item.price*amount));
+					
+					iConomy.getAccount(player.getName()).getHoldings().subtract(item.price*amount); //Substract the money from players account
+					player.getInventory().addItem(stack);
+				}
+				else {
+					player.sendMessage(ChatColor.RED + "Your inventory is full!");
+				}
 			}
 			else {
-				player.sendMessage("You do not have enough money for that. You need at least "+df.format(item.price*amount) + " Dollars");
+				player.sendMessage(ChatColor.RED + "You do not have enough money for that. You need at least "+iConomy.format(item.price*amount));
 			}
 			return true;
 		}
 			
 		if (cmd.equalsIgnoreCase("gs_price")) { //Player wants to ask about the price
-			DecimalFormat df = new DecimalFormat( "0.00" );
-			player.sendMessage("You can buy " + item.amount + " of " + item.name + " for " + df.format(item.price) + " Dollars");
+
+			player.sendMessage("You can buy " + ChatColor.YELLOW + item.amount + " of " + item.name + ChatColor.WHITE + " for " + ChatColor.YELLOW + iConomy.format(item.price));
 			return true;
 		}
 		
@@ -177,11 +187,11 @@ public class GlobalShop extends JavaPlugin {
 				price = ((double) this.ShopItems.get(itemnum).price) * this.buysell * ((double) holdingitem.getAmount())/ ((double) this.ShopItems.get(itemnum).amount)*condition;
 			}
 			else {
-				player.sendMessage("This item can not be saled!");
+				player.sendMessage(ChatColor.RED + "This item can not be saled!");
 			}
 		}
 		else {
-			player.sendMessage("You must hold the item you want to sell in your hand.");
+			player.sendMessage(ChatColor.RED + "You must hold the item you want to sell in your hand.");
 		}
 		return price;
 	}
@@ -243,7 +253,6 @@ public class GlobalShop extends JavaPlugin {
 			//Let's write our goods ;)
 				stream.println("#GlobalShop " + pdfFile.getVersion() + " by Phate");
 				stream.println("#Configuration File");
-				stream.println("#For detailed assistance please visit: http://atajsic.com/wiki/index.php/MCDocs");
 				stream.println();
 				stream.println("#Here the sale ratio is determined");
 				stream.println("buysell: " + this.buysell);
