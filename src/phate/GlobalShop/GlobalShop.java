@@ -7,9 +7,8 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.material.MaterialData;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginDescriptionFile;
-import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.config.Configuration;
 
@@ -24,6 +23,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
+import com.nijiko.permissions.PermissionHandler;
+import com.nijikokun.bukkit.Permissions.Permissions;
+
 public class GlobalShop extends JavaPlugin {
 	public static final Logger log = Logger.getLogger("Minecraft");
 	private Server server = null;
@@ -31,26 +33,25 @@ public class GlobalShop extends JavaPlugin {
 	PluginDescriptionFile pdfFile = null;
 	private double buysell=(double) 0.8;
 	Configuration config;
+	public PermissionHandler permissionHandler;
 
 	@Override
-	public void onDisable() {
-		// TODO Auto-generated method stub
-		
+	public void onDisable() {		
 		log.info("[" + pdfFile.getName() + "] by Phate." + " Plugin Disabled. (version "
 				+ pdfFile.getVersion() + ")");
 	}
 
 	@Override
 	public void onEnable() {
-		// TODO Auto-generated method stub
+		// Setup some needed members
 		server = getServer();
-		
 		config = getConfiguration();
-		
-		
 		pdfFile=this.getDescription();
+		Plugin permissionsPlugin = this.server.getPluginManager().getPlugin("Permissions");
+		
 		log.info("[" + pdfFile.getName() + "] by Phate." + " Plugin Enabled. (version " + pdfFile.getVersion() + ")");
 		
+		//Search iConomy
 		if (this.server.getPluginManager().getPlugin("iConomy") != null) {
 			log.info("[" + pdfFile.getName() + "] " + "Good. iConomy found.");
 		}
@@ -59,6 +60,7 @@ public class GlobalShop extends JavaPlugin {
 			this.server.getPluginManager().disablePlugin(this);
 		}
 		
+		//Load the Configuration
 		log.info("[" + pdfFile.getName() + "] " + "Loading Configuration...");
 		if(!this.loadConfig()) {
 			this.server.getPluginManager().disablePlugin(this);
@@ -67,6 +69,30 @@ public class GlobalShop extends JavaPlugin {
 		else {
 			log.info("[" + pdfFile.getName() + "] " + "Configuration loaded.");
 		}
+		
+		//Search for Permissions
+		if (permissionsPlugin != null) {
+			this.permissionHandler = ((Permissions) permissionsPlugin).getHandler();
+			log.info("[" + pdfFile.getName() + "] Permission system found and successfully hooked into.");
+		} 
+		else {
+			log.info("[" + pdfFile.getName() + "] Permission system not detected, defaulting to OP");
+		}
+	}
+	
+	private boolean checkPerm(Player player, String permission) {
+		if(this.permissionHandler==null && permission.contains("admin")) {
+				return player.isOp();
+		}
+		
+		if(this.permissionHandler.has(player, permission)==true) {
+			return true;
+		}
+		else {
+			log.info("[" + pdfFile.getName() + "] "+player.getDisplayName() + " access denied to " + permission);
+			return false;
+		}
+		
 	}
 	
 	@Override
@@ -86,32 +112,39 @@ public class GlobalShop extends JavaPlugin {
 		
 		// Below this are commands with 0 arguments:
 		if (cmd.equalsIgnoreCase("gs_checksell")) {
-			double price = this.getSellingPrice(player);
-			if(price!= -1.0) {
-				player.sendMessage("You will get " + ChatColor.YELLOW + iConomy.format(price) + ChatColor.WHITE +  " for that.");
+			if(this.checkPerm(player, "globalshop.trade.sell")) {
+				double price = this.getSellingPrice(player);
+				if(price!= -1.0) {
+					player.sendMessage("You will get " + ChatColor.YELLOW + iConomy.format(price) + ChatColor.WHITE +  " for that.");
+				}
 			}
 			return true;
 		}
 		
 		if (cmd.equalsIgnoreCase("gs_sell")) {
-			double price = this.getSellingPrice(player);
-			ItemStack holdingitem = player.getItemInHand();
-			
-			if(price!= -1.0) {
-				iConomy.getAccount(player.getName()).getHoldings().add(price);
-				int itemnum;
-				if(Material.getMaterial(holdingitem.getTypeId()).getMaxDurability()==-1) {
-					itemnum = this.ShopItems.indexOf(new ShopItem(holdingitem.getTypeId(),"",0,0,holdingitem.getDurability()));
-				}
-				else {
-					itemnum = this.ShopItems.indexOf(new ShopItem(holdingitem.getTypeId(),"",0,0));
-				}
+			if(this.checkPerm(player, "globalshop.trade.sell")) {
+				double price = this.getSellingPrice(player);
+				ItemStack holdingitem = player.getItemInHand();
+				String Itemtext="";
 				
-				String Itemtext=ShopItems.get(itemnum).name;
-				player.sendMessage("You got " + ChatColor.YELLOW + iConomy.format(price) + ChatColor.WHITE + " for selling " + ChatColor.YELLOW + holdingitem.getAmount() + " of " + Itemtext.toLowerCase());
-				log.info("[" + pdfFile.getName() + "] " + player.getName() + " sold " + holdingitem.getAmount() + " of "+Itemtext.toLowerCase() + " for "+iConomy.format(price) + " Dollars");
-				
-				player.setItemInHand(null);
+				if(price!= -1.0) {
+					iConomy.getAccount(player.getName()).getHoldings().add(price);
+					int itemnum = this.ShopItems.indexOf(new ShopItem(holdingitem.getTypeId(),"",0,0,-1));
+					if(itemnum!=-1) {
+						if(Material.getMaterial(holdingitem.getTypeId()).getMaxDurability()==-1) {
+							if(this.ShopItems.get(itemnum).damage!=-1) {
+								itemnum = this.ShopItems.indexOf(new ShopItem(holdingitem.getTypeId(),"",0,0,holdingitem.getDurability()));
+							}
+						}
+						Itemtext=ShopItems.get(itemnum).name;
+					}
+					
+					
+					player.sendMessage("You got " + ChatColor.YELLOW + iConomy.format(price) + ChatColor.WHITE + " for selling " + ChatColor.YELLOW + holdingitem.getAmount() + " of " + Itemtext.toLowerCase());
+					log.info("[" + pdfFile.getName() + "] " + player.getName() + " sold " + holdingitem.getAmount() + " of "+Itemtext.toLowerCase() + " for "+iConomy.format(price) + " Dollars");
+					
+					player.setItemInHand(null);
+				}
 			}
 			return true;
 		}
@@ -119,6 +152,20 @@ public class GlobalShop extends JavaPlugin {
 		//Bellow this are commands with min 1 argument:
 		if (args.length < 1) {
 			return false; //command arguments to less
+		}
+		
+		if(cmd.equalsIgnoreCase("gs_shop")) {
+			if(args[0].equalsIgnoreCase("reload")) {
+				if(this.checkPerm(player, "globalshop.admin.reload")) {
+					if(this.loadConfig()) {
+						player.sendMessage("GlobalShop Config reloaded!");
+					}
+					else {
+						player.sendMessage("Error in your Config!");
+					}
+				}
+				return true;
+			}
 		}
 		
 		//Handle, Parse and Check Arguments:
@@ -153,29 +200,32 @@ public class GlobalShop extends JavaPlugin {
 		ShopItem item = ShopItems.get(itemnum);
 		
 		if (cmd.equalsIgnoreCase("gs_buy")) { //Player wants to buy something
-			ItemStack stack = new ItemStack(item.id, item.amount*amount, (short) (item.damage!=-1 ? item.damage : 0));
-			
-			if(iConomy.getAccount(player.getName()).getHoldings().hasEnough(item.price*amount)) { //Has the player enough money?
-				if(player.getInventory().firstEmpty()!=-1) {
-					player.sendMessage("You have bought " + ChatColor.YELLOW + stack.getAmount() + " of "+item.name + ChatColor.WHITE + " for " + ChatColor.YELLOW + iConomy.format(item.price*amount));			
-					log.info("[" + pdfFile.getName() + "] " + player.getName() + " bought " + stack.getAmount() + " of "+item.name + " for "+iConomy.format(item.price*amount));
-					
-					iConomy.getAccount(player.getName()).getHoldings().subtract(item.price*amount); //Substract the money from players account
-					player.getInventory().addItem(stack);
+			if(this.checkPerm(player, "globalshop.trade.buy")) {
+				ItemStack stack = new ItemStack(item.id, item.amount*amount, (short) (item.damage!=-1 ? item.damage : 0));
+				
+				if(iConomy.getAccount(player.getName()).getHoldings().hasEnough(item.price*amount)) { //Has the player enough money?
+					if(player.getInventory().firstEmpty()!=-1) {
+						player.sendMessage("You have bought " + ChatColor.YELLOW + stack.getAmount() + " of "+item.name + ChatColor.WHITE + " for " + ChatColor.YELLOW + iConomy.format(item.price*amount));			
+						log.info("[" + pdfFile.getName() + "] " + player.getName() + " bought " + stack.getAmount() + " of "+item.name + " for "+iConomy.format(item.price*amount));
+						
+						iConomy.getAccount(player.getName()).getHoldings().subtract(item.price*amount); //Substract the money from players account
+						player.getInventory().addItem(stack);
+					}
+					else {
+						player.sendMessage(ChatColor.RED + "Your inventory is full!");
+					}
 				}
 				else {
-					player.sendMessage(ChatColor.RED + "Your inventory is full!");
+					player.sendMessage(ChatColor.RED + "You do not have enough money for that. You need at least "+iConomy.format(item.price*amount));
 				}
-			}
-			else {
-				player.sendMessage(ChatColor.RED + "You do not have enough money for that. You need at least "+iConomy.format(item.price*amount));
 			}
 			return true;
 		}
 			
 		if (cmd.equalsIgnoreCase("gs_price")) { //Player wants to ask about the price
-
-			player.sendMessage("You can buy " + ChatColor.YELLOW + item.amount + " of " + item.name + ChatColor.WHITE + " for " + ChatColor.YELLOW + iConomy.format(item.price));
+			if(this.checkPerm(player, "globalshop.trade.buy")) {
+				player.sendMessage("You can buy " + ChatColor.YELLOW + item.amount + " of " + item.name + ChatColor.WHITE + " for " + ChatColor.YELLOW + iConomy.format(item.price));
+			}
 			return true;
 		}
 		
@@ -187,21 +237,21 @@ public class GlobalShop extends JavaPlugin {
 		ItemStack holdingitem = player.getItemInHand();
 		double price=-1;
 		double condition;
-			
+		
 		if(holdingitem != null && holdingitem.getTypeId()!=0) {
 			
-			int itemnum;
-			
+			int itemnum = this.ShopItems.indexOf(new ShopItem(holdingitem.getTypeId(),"",0,0,-1));
+			if(itemnum!=-1) {
 				if(Material.getMaterial(holdingitem.getTypeId()).getMaxDurability()==-1) {
-					player.sendMessage("Durab: "+holdingitem.getDurability());
-					itemnum = this.ShopItems.indexOf(new ShopItem(holdingitem.getTypeId(),"",0,0,holdingitem.getDurability()));
+					if(this.ShopItems.get(itemnum).damage!=-1) {
+						itemnum = this.ShopItems.indexOf(new ShopItem(holdingitem.getTypeId(),"",0,0,holdingitem.getDurability()));
+					}
 					condition = 1;
 				}
 				else {
 					condition = 1 - ((double) holdingitem.getDurability())/((double) Material.getMaterial(holdingitem.getTypeId()).getMaxDurability());
-					itemnum = this.ShopItems.indexOf(new ShopItem(holdingitem.getTypeId(),"",0,0));
 				}
-			if(itemnum!=-1) {
+			
 				price = ((double) this.ShopItems.get(itemnum).price) * this.buysell * ((double) holdingitem.getAmount())/ ((double) this.ShopItems.get(itemnum).amount)*condition;
 			}
 			else {
@@ -212,6 +262,7 @@ public class GlobalShop extends JavaPlugin {
 			player.sendMessage(ChatColor.RED + "You must hold the item you want to sell in your hand.");
 		}
 		return price;
+		
 	}
 	
 	private Boolean loadConfig() {

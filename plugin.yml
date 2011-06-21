@@ -1,26 +1,36 @@
 name: GlobalShop
 main: phate.GlobalShop.GlobalShop
-version: 0.4
+version: 0.5
 author: Phate
 description: >
              Simple global Shop there the player can buy and sell items with commands
 commands:
+  gs_shop:
+    description: Control the Shop
+    aliases: shop
+    usage: /<command> (reload)
+    permission: globalshop.admin.*
+    
   gs_buy:
     description: Buy an item from GlobalShop
     aliases: buy
     usage: /<command> (name|id) [amount]
+    permission: globalshop.trade.buy
 
   gs_sell:
     description: Sell item in your hand to GlobalShop
     aliases: sell
     usage: /<command>
+    permission: globalshop.trade.sell
     
   gs_price:
     description: Shows the price of specified item
     aliases: price
     usage: /<command> (name|id)
+    permission: globalshop.trade.buy
     
   gs_checksell:
     description: Shows what the player would get for selling the item in his hand
     aliases: checksell
     usage: /<command>
+    permission: globalshop.trade.sell

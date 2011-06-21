@@ -8,5 +8,6 @@
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="lib" path="/Users/phate/Downloads/bukkit/plugins/iConomy.jar"/>
+	<classpathentry kind="lib" path="/Users/phate/Downloads/Permissions.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
