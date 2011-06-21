@@ -1,6 +1,6 @@
 name: GlobalShop
 main: phate.GlobalShop.GlobalShop
-version: 0.3
+version: 0.4
 author: Phate
 description: >
              Simple global Shop there the player can buy and sell items with commands

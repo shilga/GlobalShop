@@ -7,6 +7,7 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.material.MaterialData;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -59,8 +60,13 @@ public class GlobalShop extends JavaPlugin {
 		}
 		
 		log.info("[" + pdfFile.getName() + "] " + "Loading Configuration...");
-		this.loadConfig();
-		log.info("[" + pdfFile.getName() + "] " + "Configuration loaded.");
+		if(!this.loadConfig()) {
+			this.server.getPluginManager().disablePlugin(this);
+			log.info("[" + pdfFile.getName() + "] " + "Disabling...");
+		}
+		else {
+			log.info("[" + pdfFile.getName() + "] " + "Configuration loaded.");
+		}
 	}
 	
 	@Override
@@ -93,9 +99,17 @@ public class GlobalShop extends JavaPlugin {
 			
 			if(price!= -1.0) {
 				iConomy.getAccount(player.getName()).getHoldings().add(price);
+				int itemnum;
+				if(Material.getMaterial(holdingitem.getTypeId()).getMaxDurability()==-1) {
+					itemnum = this.ShopItems.indexOf(new ShopItem(holdingitem.getTypeId(),"",0,0,holdingitem.getDurability()));
+				}
+				else {
+					itemnum = this.ShopItems.indexOf(new ShopItem(holdingitem.getTypeId(),"",0,0));
+				}
 				
-				player.sendMessage("You got " + ChatColor.YELLOW + iConomy.format(price) + ChatColor.WHITE + " for selling " + ChatColor.YELLOW + holdingitem.getAmount() + " of " + holdingitem.getType().toString().toLowerCase());
-				log.info("[" + pdfFile.getName() + "] " + player.getName() + " sold " + holdingitem.getAmount() + " of "+holdingitem.getType().toString().toLowerCase() + " for "+iConomy.format(price) + " Dollars");
+				String Itemtext=ShopItems.get(itemnum).name;
+				player.sendMessage("You got " + ChatColor.YELLOW + iConomy.format(price) + ChatColor.WHITE + " for selling " + ChatColor.YELLOW + holdingitem.getAmount() + " of " + Itemtext.toLowerCase());
+				log.info("[" + pdfFile.getName() + "] " + player.getName() + " sold " + holdingitem.getAmount() + " of "+Itemtext.toLowerCase() + " for "+iConomy.format(price) + " Dollars");
 				
 				player.setItemInHand(null);
 			}
@@ -129,7 +143,7 @@ public class GlobalShop extends JavaPlugin {
 			}
 		}
 		
-		int itemnum = this.ShopItems.indexOf(new ShopItem(searchid,args[0],0,0));
+		int itemnum = this.ShopItems.indexOf(new ShopItem(searchid,args[0],0,0,-1));
 		if(itemnum == -1) {
 			player.sendMessage(ChatColor.RED+"This item is not for sale!");
 			return true;
@@ -175,15 +189,19 @@ public class GlobalShop extends JavaPlugin {
 		double condition;
 			
 		if(holdingitem != null && holdingitem.getTypeId()!=0) {
-			int itemnum = this.ShopItems.indexOf(new ShopItem(holdingitem.getTypeId(),"",0,0));
 			
-			if(itemnum!=-1) {
+			int itemnum;
+			
 				if(Material.getMaterial(holdingitem.getTypeId()).getMaxDurability()==-1) {
+					player.sendMessage("Durab: "+holdingitem.getDurability());
+					itemnum = this.ShopItems.indexOf(new ShopItem(holdingitem.getTypeId(),"",0,0,holdingitem.getDurability()));
 					condition = 1;
 				}
 				else {
 					condition = 1 - ((double) holdingitem.getDurability())/((double) Material.getMaterial(holdingitem.getTypeId()).getMaxDurability());
+					itemnum = this.ShopItems.indexOf(new ShopItem(holdingitem.getTypeId(),"",0,0));
 				}
+			if(itemnum!=-1) {
 				price = ((double) this.ShopItems.get(itemnum).price) * this.buysell * ((double) holdingitem.getAmount())/ ((double) this.ShopItems.get(itemnum).amount)*condition;
 			}
 			else {
@@ -196,12 +214,13 @@ public class GlobalShop extends JavaPlugin {
 		return price;
 	}
 	
-	private void loadConfig() {
+	private Boolean loadConfig() {
 		List<String> Stringlist = null;
 		if (!(new File(this.getDataFolder(), "config.yml")).exists()){
 			log.info("[" + pdfFile.getName() + "] " + "Configfile does not exist. Write out a default");
 			this.loadDefaults();
 			this.saveConfig();
+			return true;
 		}
 		else {
 			config.load();
@@ -216,15 +235,26 @@ public class GlobalShop extends JavaPlugin {
 	        			ShopItems.add(new ShopItem(Integer.parseInt(parts[0]),parts[1],Integer.parseInt(parts[2]),Double.parseDouble(parts[3])));
 	        		}
 	        		else if(parts.length == 5){
-	        			ShopItems.add(new ShopItem(Integer.parseInt(parts[0]),parts[1],Integer.parseInt(parts[2]),Double.parseDouble(parts[3]),Integer.parseInt(parts[4])));
+	        			if(Material.getMaterial(Integer.parseInt(parts[0])).getMaxDurability()!=-1) {
+	        				throw new InvalidDataException(parts[1]+" get's it's damage by using it.");
+	        			}
+	        			else {
+		        			ShopItems.add(new ShopItem(Integer.parseInt(parts[0]),parts[1],Integer.parseInt(parts[2]),Double.parseDouble(parts[3]),Integer.parseInt(parts[4])));
+	        			}
 	           		}
 	        		else {
 	        			throw new InvalidDataException("Wrong size of arguments in ShopItems");
 	        		}
         		}
+        		return true;
+        	}
+        	catch(InvalidDataException e) {
+        		log.info("[" + pdfFile.getName() + "] " + "Error reading ShopItems."+e.getMessage());
+        		return false;
         	}
         	catch (Exception e) {
         		log.info("[" + pdfFile.getName() + "] " + "Error reading ShopItems. Your config.yml is incorrect.");
+        		return false;
         	}
 		}
 	}

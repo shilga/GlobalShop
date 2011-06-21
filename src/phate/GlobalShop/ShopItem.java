@@ -12,6 +12,7 @@ public class ShopItem {
 		this.price=price;
 		this.name=name;
 		this.amount=amount;
+		this.damage=-1;
 	}
 	
 	public ShopItem(int id, String name, int amount, double price, int damage) {
@@ -26,12 +27,27 @@ public class ShopItem {
 	public boolean equals(Object o) {
 		ShopItem obj = (ShopItem) o;
 		if(obj.id==this.id) {
-			return true;
+			if(this.damage!=-1) {
+				if(this.damage==obj.damage) {
+					return true;
+				}
+			}
+			else {
+				return true;
+			}
 		}
 		
 		if(this.name.equalsIgnoreCase(obj.name)) {
-			return true;
+			if(this.damage==-1) {
+				return true;
+			}
+			else {
+				if(this.damage==obj.damage) {
+					return true;
+				}
+			}
 		}
+		
 		
 		//items dont match
 		return false;
