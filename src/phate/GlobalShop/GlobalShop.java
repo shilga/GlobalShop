@@ -294,7 +294,7 @@ public class GlobalShop extends JavaPlugin {
 	        			}
 	           		}
 	        		else {
-	        			throw new InvalidDataException("Wrong size of arguments in ShopItems");
+	        			throw new InvalidDataException("Wrong size of arguments in ShopItems: "+parts[1]);
 	        		}
         		}
         		return true;
